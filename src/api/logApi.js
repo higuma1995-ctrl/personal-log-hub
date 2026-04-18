@@ -9,7 +9,10 @@ export async function createLogItem({ category, text }) {
     throw new Error("VITE_GAS_URLが未設定です。");
   }
 
-  await fetch(buildGasUrl({ action: "post", category, content: text, tags: "" }), {
+  const url = buildGasUrl({ action: "post", category, content: text, tags: "" });
+  logGasUrlDebug(url);
+
+  await fetch(url, {
     method: "GET",
     mode: "no-cors",
   });
@@ -22,7 +25,10 @@ export async function fetchLogItems() {
     throw new Error("VITE_GAS_URLが未設定です。");
   }
 
-  const response = await fetch(buildGasUrl({ action: "get" }));
+  const url = buildGasUrl({ action: "get" });
+  logGasUrlDebug(url);
+
+  const response = await fetch(url);
 
   if (!response.ok) {
     throw new Error("取得に失敗しました。");
@@ -39,4 +45,17 @@ function buildGasUrl(params) {
   const separator = gasUrl.includes("?") ? "&" : "?";
 
   return `${gasUrl}${separator}${query}`;
+}
+
+function logGasUrlDebug(url) {
+  const baseUrl = url.split("?")[0];
+  const endsWithExec = baseUrl.endsWith("/exec");
+
+  console.log("[Personal Log Hub] GAS request URL:", url);
+  console.log("[Personal Log Hub] GAS base URL:", baseUrl);
+  console.log("[Personal Log Hub] GAS base ends with /exec:", endsWithExec);
+
+  if (!endsWithExec) {
+    console.warn("[Personal Log Hub] VITE_GAS_URL should end with /exec before query parameters.");
+  }
 }
