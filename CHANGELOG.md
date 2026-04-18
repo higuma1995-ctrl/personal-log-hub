@@ -2,6 +2,7 @@
 
 | 日付 | バージョン | 変更内容 |
 |------|-----------|---------|
+| 2026-04-18 | 0.1.4 | GASへのPOSTをCORS回避のためno-corsに変更し、fetchが例外を投げなければ送信成功として扱う方式へ変更 |
 | 2026-04-18 | 0.1.3 | VITE_GAS_URL参照をsrc/config.jsへ集約し、GitHub Actionsのビルド前にVITE_GAS_URL未設定を検出してデプロイを止める検証を追加 |
 | 2026-04-18 | 0.1.2 | GitHub Pages公開元をgh-pagesブランチに合わせ、deploy.ymlでgh-pagesをdist成果物のみのクリーンな公開ブランチとして更新する設定を追加 |
 | 2026-04-18 | 0.1.1 | GitHub PagesデプロイをPages API方式からpeaceiris/actions-gh-pages@v3によるgh-pagesブランチ公開方式へ変更 |
