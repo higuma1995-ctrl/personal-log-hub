@@ -4,12 +4,21 @@ export function isGasConfigured() {
   return Boolean(gasUrl);
 }
 
-export async function createLogItem({ category, text }) {
+export async function createLogItem({ date, title, tag, mood, duration, status, content }) {
   if (!gasUrl) {
     throw new Error("VITE_GAS_URLが未設定です。");
   }
 
-  const url = buildGasUrl({ action: "post", category, content: text, tags: "" });
+  const url = buildGasUrl({
+    action: "post",
+    date,
+    title,
+    tag,
+    mood,
+    duration,
+    status,
+    content,
+  });
   logGasUrlDebug(url);
 
   await fetch(url, {

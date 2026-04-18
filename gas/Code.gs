@@ -1,36 +1,77 @@
-const STORAGE_KEY = "PERSONAL_LOG_ITEMS";
-
-function doPost(e) {
-  try {
-    const payload = parsePostPayload(e);
-    return writeItem(payload.category, payload.text || payload.content);
-  } catch (error) {
-    return jsonResponse({
-      ok: false,
-      error: error.message,
-    });
-  }
-}
-
-function parsePostPayload(e) {
-  if (e && e.parameter && (e.parameter.category || e.parameter.text)) {
-    return {
-      category: e.parameter.category,
-      text: e.parameter.text,
-    };
-  }
-
-  return JSON.parse((e && e.postData && e.postData.contents) || "{}");
-}
+const HEADERS = ["timestamp", "date", "title", "tag", "mood", "duration", "status", "content"];
 
 function doGet(e) {
   const action = e && e.parameter && e.parameter.action ? e.parameter.action : "get";
 
   if (action === "post") {
-    return writeItem(e.parameter.category, e.parameter.content);
+    return writeItem(e.parameter);
   }
 
-  const items = readItems().sort(function (a, b) {
+  return getItems();
+}
+
+function writeItem(parameter) {
+  const date = String(parameter.date || "").trim();
+  const title = String(parameter.title || "").trim();
+  const tag = String(parameter.tag || "").trim();
+  const mood = String(parameter.mood || "").trim();
+  const duration = String(parameter.duration || "").trim();
+  const status = String(parameter.status || "").trim();
+  const content = String(parameter.content || "").trim();
+
+  if (!date || !title || !tag || !content) {
+    return jsonResponse({
+      ok: false,
+      error: "date, title, tag, and content are required.",
+    });
+  }
+
+  const timestamp = new Date().toISOString();
+  const sheet = getYearSheet(new Date(timestamp).getFullYear());
+  sheet.appendRow([timestamp, date, title, tag, mood, duration, status, content]);
+
+  return jsonResponse({
+    ok: true,
+  });
+}
+
+function getItems() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = spreadsheet.getSheets();
+  const items = [];
+
+  sheets.forEach(function (sheet) {
+    if (!/^\d{4}$/.test(sheet.getName())) {
+      return;
+    }
+
+    const values = sheet.getDataRange().getValues();
+
+    for (let i = 1; i < values.length; i += 1) {
+      const row = values[i];
+      const timestamp = row[0];
+
+      if (!timestamp) {
+        continue;
+      }
+
+      items.push({
+        id: String(timestamp) + "-" + i,
+        category: String(row[3] || ""),
+        text: String(row[7] || ""),
+        createdAt: timestamp instanceof Date ? timestamp.toISOString() : String(timestamp),
+        date: row[1],
+        title: row[2],
+        tag: row[3],
+        mood: row[4],
+        duration: row[5],
+        status: row[6],
+        content: row[7],
+      });
+    }
+  });
+
+  items.sort(function (a, b) {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
@@ -40,48 +81,29 @@ function doGet(e) {
   });
 }
 
-function writeItem(categoryValue, textValue) {
-  const category = String(categoryValue || "").trim();
-  const text = String(textValue || "").trim();
+function getYearSheet(year) {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheetName = String(year);
+  let sheet = spreadsheet.getSheetByName(sheetName);
 
-  if (!category || !text) {
-    return jsonResponse({
-      ok: false,
-      error: "category and content are required.",
-    });
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(sheetName);
   }
 
-  const items = readItems();
-  const createdAt = new Date().toISOString();
-  const item = {
-    id: createdAt + "-" + Utilities.getUuid(),
-    category,
-    text,
-    createdAt,
-  };
+  ensureHeader(sheet);
+  return sheet;
+}
 
-  items.push(item);
-  writeItems(items);
-
-  return jsonResponse({
-    ok: true,
-    item,
+function ensureHeader(sheet) {
+  const range = sheet.getRange(1, 1, 1, HEADERS.length);
+  const values = range.getValues()[0];
+  const needsHeader = HEADERS.some(function (header, index) {
+    return values[index] !== header;
   });
-}
 
-function readItems() {
-  const value = PropertiesService.getScriptProperties().getProperty(STORAGE_KEY);
-
-  if (!value) {
-    return [];
+  if (needsHeader) {
+    range.setValues([HEADERS]);
   }
-
-  const parsed = JSON.parse(value);
-  return Array.isArray(parsed) ? parsed : [];
-}
-
-function writeItems(items) {
-  PropertiesService.getScriptProperties().setProperty(STORAGE_KEY, JSON.stringify(items));
 }
 
 function jsonResponse(payload) {

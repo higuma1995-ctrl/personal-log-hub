@@ -26,6 +26,7 @@ body {
 }
 
 button,
+input,
 select,
 textarea {
   font: inherit;
@@ -131,6 +132,7 @@ h2 {
   font-weight: 700;
 }
 
+input,
 select,
 textarea {
   background: #fff;
@@ -143,6 +145,101 @@ textarea {
 textarea {
   min-height: 180px;
   resize: vertical;
+}
+
+.modeTabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.modeTabs button {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 700;
+  padding: 10px 14px;
+}
+
+.modeTabs button.active {
+  background: var(--surface-strong);
+  color: var(--text);
+}
+
+.tagField {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 14px;
+}
+
+.tagField legend {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 0 6px;
+}
+
+.tagGrid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.tagOption {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.tagOption input {
+  width: auto;
+}
+
+.buttonRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.confirmBox {
+  background: var(--surface-strong);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.confirmBox h3 {
+  margin: 0 0 12px;
+}
+
+.confirmBox dl {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.confirmBox dl div {
+  display: grid;
+  gap: 4px;
+}
+
+.confirmBox dt {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.confirmBox dd {
+  margin: 0;
+  word-break: break-word;
+}
+
+.preWrap {
+  white-space: pre-wrap;
 }
 
 .primaryButton,
