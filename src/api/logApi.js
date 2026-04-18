@@ -1,4 +1,4 @@
-const gasUrl = import.meta.env.VITE_GAS_URL;
+import { gasUrl } from "../config.js";
 
 export function isGasConfigured() {
   return Boolean(gasUrl);
