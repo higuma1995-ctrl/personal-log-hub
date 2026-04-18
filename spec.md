@@ -1,6 +1,6 @@
 # spec.md
 # personal-log-hub
-# version: 0.1.0
+# version: 0.1.5
 # 作成日: 2026-04-18
 # 注意: 実装AIが唯一従う仕様。変更はCHANGELOG→spec→requirementsの順で行う。
 
@@ -48,16 +48,16 @@ React SPAとして以下の2画面を持つ。
 - 送信先URLは `import.meta.env.VITE_GAS_URL` から取得する。
 - `VITE_GAS_URL` が未設定の場合は送信せず、画面にエラーを表示する。
 - テキストが空の場合は送信せず、画面にエラーを表示する。
-- POST成功時はテキスト入力を空にし、完了メッセージを表示する。
+- POST送信後はレスポンスを読まず、送信処理が例外を投げなければテキスト入力を空にし、完了メッセージを表示する。
 
 ### 3-3. POSTデータ
 
-```json
-{
-  "category": "日記",
-  "text": "記録本文"
-}
-```
+hidden formから以下のフォーム項目として送信する。
+
+| name | value |
+|------|-------|
+| category | 選択カテゴリ |
+| text | 記録本文 |
 
 ---
 
@@ -95,9 +95,11 @@ React SPAとして以下の2画面を持つ。
 
 ## 5. GAS通信
 
-- フロントエンドは外部ライブラリを使わず `fetch` で通信する。
+- フロントエンドは外部ライブラリを使わず通信する。
 - GAS URLは `.env` ではなく環境変数名 `VITE_GAS_URL` として参照する。
-- CORSプリフライトを避けるため、POSTは `text/plain;charset=utf-8` でJSON文字列を送る。
+- GETは `fetch` で通信する。
+- CORS制約を避けるため、POSTは `fetch` ではなくhidden formをhidden iframeへsubmitして送信する。
+- POSTレスポンスは受け取らず、送信処理が例外を投げなければ成功として扱う。
 - GAS側は `gas/Code.gs` に `doPost` と `doGet` を配置する。
 
 ---
@@ -141,4 +143,5 @@ React SPAとして以下の2画面を持つ。
 ## CHANGELOG
 | 日付 | バージョン | 変更内容 |
 |------|-----------|---------|
+| 2026-04-18 | 0.1.5 | GAS POSTをfetchからhidden form submit方式へ変更し、レスポンスを読まず送信処理完了で成功扱いとする仕様へ更新 |
 | 2026-04-18 | 0.1.0 | フェーズ1仕様として入力画面、一覧画面、GAS通信、GitHub Pages自動デプロイ、gas/Code.gs配置を定義し、AGENTS.md・requirements.mdとの構成を同期 |

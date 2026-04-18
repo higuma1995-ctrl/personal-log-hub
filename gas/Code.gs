@@ -2,7 +2,7 @@ const STORAGE_KEY = "PERSONAL_LOG_ITEMS";
 
 function doPost(e) {
   try {
-    const payload = JSON.parse(e.postData.contents || "{}");
+    const payload = parsePostPayload(e);
     const category = String(payload.category || "").trim();
     const text = String(payload.text || "").trim();
 
@@ -35,6 +35,17 @@ function doPost(e) {
       error: error.message,
     });
   }
+}
+
+function parsePostPayload(e) {
+  if (e && e.parameter && (e.parameter.category || e.parameter.text)) {
+    return {
+      category: e.parameter.category,
+      text: e.parameter.text,
+    };
+  }
+
+  return JSON.parse((e && e.postData && e.postData.contents) || "{}");
 }
 
 function doGet() {
