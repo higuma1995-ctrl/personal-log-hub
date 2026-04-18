@@ -2,6 +2,7 @@
 
 | 日付 | バージョン | 変更内容 |
 |------|-----------|---------|
+| 2026-04-18 | 0.1.6 | GAS GET送信用URLの各クエリパラメータをencodeURIComponentで明示的にエンコードするよう修正 |
 | 2026-04-18 | 0.1.5 | GAS書き込みをfetchのGET方式に変更し、action=postのクエリパラメータcategory/content/tagsで送信するよう修正 |
 | 2026-04-18 | 0.1.4 | GASへのPOSTをCORS回避のためno-corsに変更し、fetchが例外を投げなければ送信成功として扱う方式へ変更 |
 | 2026-04-18 | 0.1.3 | VITE_GAS_URL参照をsrc/config.jsへ集約し、GitHub Actionsのビルド前にVITE_GAS_URL未設定を検出してデプロイを止める検証を追加 |

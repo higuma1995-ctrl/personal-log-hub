@@ -33,11 +33,10 @@ export async function fetchLogItems() {
 }
 
 function buildGasUrl(params) {
-  const url = new URL(gasUrl);
+  const query = Object.entries(params)
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+    .join("&");
+  const separator = gasUrl.includes("?") ? "&" : "?";
 
-  Object.entries(params).forEach(([key, value]) => {
-    url.searchParams.set(key, value);
-  });
-
-  return url.toString();
+  return `${gasUrl}${separator}${query}`;
 }
