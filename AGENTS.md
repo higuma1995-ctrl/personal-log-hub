@@ -1,110 +1,52 @@
 # AGENTS.md
 # personal-log-hub
-# 作成日: 2026-04-18
-# 対象AI: Codex（実装担当）
+# 更新：2026-04-19
 
----
+## 基本方針
 
-## あなたの役割
+- spec.mdが唯一の仕様。不明点はspec.mdに従う
+- 動作確認はスキップしてOK（スマホ実機で確認する）
+- CHANGELOG.mdを必ず更新してからpushする
+- コミットメッセージ形式：「機能名 vX.X.X」
 
-このファイルを読んだAIは、`spec.md`に従ってpersonal-log-hubを実装する。
-設計・仕様の変更は行わない。不明点があれば実装を止めて質問する。
+## 技術構成
 
----
+- Vite + React
+- GitHub Pages（gh-pagesブランチ）
+- GitHub Actions（deploy.yml）
+- GAS（Google Apps Script）
+- Googleスプレッドシート
 
-## 最重要ルール
+## GAS通信ルール
 
-- **spec.mdが唯一の仕様。spec.mdに書いていないことは実装しない。**
-- specに曖昧な点がある場合は推測実装せず、質問してから進める。
-- 動作するコードを理由なく変更しない。
-- 1タスクずつ完結させる（複数タスクを同時に進めない）。
+- fetchはGETのみ使用（POSTは使わない）
+- パラメータ形式：?action=post&key=value
+- CORS問題の結論：GETで回避・再調査不要
 
----
+## スプレッドシートルール
 
-## プロジェクト構成
+- シート名は年（YYYY形式）
+- GASが送信時に当年シートの存在確認・なければ自動生成
+- ヘッダー行：timestamp・date・title・tag・mood・duration・status・content
+- timestampはGAS側で自動付与
 
-```
-personal-log-hub/
-├── AGENTS.md
-├── spec.md
-├── requirements.md
-├── CHANGELOG.md
-├── index.html
-├── vite.config.js
-├── package.json
-├── src/
-│   ├── main.jsx
-│   ├── App.jsx
-│   ├── App.css
-│   ├── api/
-│   │   └── logApi.js
-│   └── pages/
-│       ├── InputPage.jsx
-│       └── ListPage.jsx
-├── gas/
-│   └── Code.gs
-└── .github/
-    └── workflows/
-        └── deploy.yml
-```
+## ファイル管理ルール
 
----
+requirements.md：目的・スコープ
+spec.md：唯一の仕様書
+CHANGELOG.md：変更履歴
+AGENTS.md：この指示書
+log-format.md：ログ整形フォーマット
 
-## 技術スタック
+## 作業完了時の手順
 
-| 項目 | 内容 |
-|------|------|
-| フレームワーク | Vite + React |
-| スタイル | CSS（外部UIライブラリなし） |
-| GAS URL | `VITE_GAS_URL` |
-| GASコード | `gas/Code.gs` |
-| ホスティング | GitHub Pages |
-| CI/CD | `.github/workflows/deploy.yml` |
-
----
-
-## フェーズ1実装範囲
-
-1. リポジトリ初期化（Vite + React）
-2. `vite.config.js` にbase URL設定（`/personal-log-hub/`）
-3. 入力画面（InputPage）
-4. 一覧画面（ListPage）
-5. GASとの通信（`VITE_GAS_URL` 使用）
-6. GitHub Actions（`deploy.yml`）
-7. `gas/Code.gs` の配置
-
----
-
-## CHANGELOG更新ルール
-
-### 対象ファイル
-
-- `CHANGELOG.md`：変更履歴の正本として必ず更新する。
-- `spec.md` 末尾の `CHANGELOG`：仕様変更がある場合は同じバージョンを追記する。
-
-### フォーマット
-
-- Markdownテーブルで記録する。
-- 列は `日付` / `バージョン` / `変更内容` とする。
-- 変更内容は実装者が後から追える粒度で、主要な仕様変更・実装修正を1行にまとめる。
-
-### バージョニング
-
-- バージョンは `MAJOR.MINOR.PATCH` 形式を基本とする。
-- 仕様変更・UI順序変更・保存仕様変更は少なくともPATCHを上げる。
-- 互換性に影響する大きな変更はMINOR以上を上げる。
-
-### 更新タイミング
-
-- `spec.md`、`AGENTS.md`、実装コードのいずれかを変更したタスクでは、完了前にCHANGELOGを更新する。
-- ユーザーへ完了報告する前に、CHANGELOGの追記漏れがないか確認する。
-
----
+1. CHANGELOG.mdに変更内容を追記（vX.X.X）
+2. spec.mdのCHANGELOGを更新
+3. GitHubにpush
+4. コミットメッセージ：「変更内容 vX.X.X」
 
 ## 禁止事項
 
-- spec.mdに記載のない機能の追加
-- 外部UIライブラリの導入（shadcn、MUI等）
-- フェーズ2項目の先行実装
-- 既存の動作するコードの理由なき変更
-- CHANGELOGを更新せずにタスクを完了とすること
+- spec.md未記載の機能を勝手に追加しない
+- POSTでGASにリクエストしない
+- 動作確認のためにブラウザを起動しようとしない
