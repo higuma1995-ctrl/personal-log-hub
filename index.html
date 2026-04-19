@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#000000" />
+    <link rel="manifest" href="/personal-log-hub/manifest.json" />
+    <title>Personal Log Hub</title>
+    <script type="module" crossorigin src="/personal-log-hub/assets/index-SPn3HY3S.js"></script>
+    <link rel="stylesheet" crossorigin href="/personal-log-hub/assets/index-DULY2eb3.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/personal-log-hub/sw.js");
+        });
+      }
+    </script>
+  </body>
+</html>
