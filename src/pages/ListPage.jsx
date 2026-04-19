@@ -273,7 +273,7 @@ function filterItemsByDateRange(items, start, end) {
 function buildMarkdown({ genre, items, periodLabel }) {
   const sections = items.map((item) => {
     const record = item.record || {};
-    const lines = [`## ${record.date || formatDateOnly(item.createdAt)} ${record.title || ""}`.trim()];
+    const lines = [`## ${formatMarkdownDate(record.date)} ${record.title || ""}`.trim()];
 
     if (record.tag) {
       lines.push(`- タグ：${record.tag}`);
@@ -298,6 +298,18 @@ function buildMarkdown({ genre, items, periodLabel }) {
   });
 
   return [`# ${genre.label}ログ｜${periodLabel}`, ...sections].join("\n\n");
+}
+
+function formatMarkdownDate(value) {
+  if (!value) {
+    return "";
+  }
+
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  return formatDateOnly(value);
 }
 
 function getPeriodLabel(period, yearMonth, customRange) {
