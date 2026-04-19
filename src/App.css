@@ -206,6 +206,33 @@ textarea {
   gap: 10px;
 }
 
+.filterGrid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-bottom: 18px;
+}
+
+.exportBox {
+  align-items: center;
+  background: var(--surface-strong);
+  border-radius: 8px;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding: 16px;
+}
+
+.exportBox h3 {
+  margin: 0 0 6px;
+}
+
+.exportBox p {
+  color: var(--muted);
+  margin: 0;
+}
+
 .confirmBox {
   background: var(--surface-strong);
   border-radius: 8px;

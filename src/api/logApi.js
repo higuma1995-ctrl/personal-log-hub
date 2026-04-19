@@ -70,6 +70,7 @@ function mapRowsToItems(headers, rows, genre) {
         category: tag,
         text: title ? `${title}\n${content}` : content,
         createdAt,
+        record,
       };
     })
     .filter((item) => item.createdAt || item.text);
