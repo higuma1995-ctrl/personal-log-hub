@@ -1,21 +1,21 @@
 import { gasUrl } from "../config.js";
-
-const HEADERS = ["timestamp", "date", "title", "tag", "mood", "duration", "status", "content"];
+import { getGenre, getGenreSheetName } from "../logSchema.js";
 
 export function isGasConfigured() {
   return Boolean(gasUrl);
 }
 
-export async function createLogItem({ date, title, tag, mood, duration, status, content }) {
+export async function createLogItem({ genreKey, data }) {
   if (!gasUrl) {
     throw new Error("VITE_GAS_URLが未設定です。");
   }
 
-  const values = [date, title, tag, mood, duration, status, content].map(toCsvValue).join(",");
+  const genre = getGenre(genreKey);
+  const values = genre.fields.map((field) => toCsvValue(formatValue(data[field]))).join(",");
   const url = buildGasUrl({
     action: "post",
-    sheet: getCurrentYearSheet(),
-    headers: HEADERS.join(","),
+    sheet: getGenreSheetName(genre.key),
+    headers: genre.headers.join(","),
     values,
   });
   logGasUrlDebug(url);
@@ -28,12 +28,13 @@ export async function createLogItem({ date, title, tag, mood, duration, status, 
   return null;
 }
 
-export async function fetchLogItems() {
+export async function fetchLogItems(genreKey = "dev") {
   if (!gasUrl) {
     throw new Error("VITE_GAS_URLが未設定です。");
   }
 
-  const url = buildGasUrl({ action: "get", sheet: getCurrentYearSheet() });
+  const genre = getGenre(genreKey);
+  const url = buildGasUrl({ action: "get", sheet: getGenreSheetName(genre.key) });
   logGasUrlDebug(url);
 
   const response = await fetch(url);
@@ -48,14 +49,10 @@ export async function fetchLogItems() {
     return data.items;
   }
 
-  return mapRowsToItems(data.headers, data.rows);
+  return mapRowsToItems(data.headers, data.rows, genre);
 }
 
-function getCurrentYearSheet() {
-  return String(new Date().getFullYear());
-}
-
-function mapRowsToItems(headers, rows) {
+function mapRowsToItems(headers, rows, genre) {
   if (!Array.isArray(headers) || !Array.isArray(rows)) {
     return [];
   }
@@ -64,15 +61,22 @@ function mapRowsToItems(headers, rows) {
     .map((row, index) => {
       const record = Object.fromEntries(headers.map((header, headerIndex) => [header, row[headerIndex]]));
       const createdAt = record.timestamp || record.date || "";
+      const content = record.content || "";
+      const tag = record.tag || genre.label;
+      const title = record.title || "";
 
       return {
-        id: `${createdAt}-${index}`,
-        category: record.tag || "",
-        text: record.content || "",
+        id: `${genre.key}-${createdAt}-${index}`,
+        category: tag,
+        text: title ? `${title}\n${content}` : content,
         createdAt,
       };
     })
     .filter((item) => item.createdAt || item.text);
+}
+
+function formatValue(value) {
+  return Array.isArray(value) ? value.join(",") : value ?? "";
 }
 
 function buildGasUrl(params) {

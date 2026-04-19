@@ -1,58 +1,29 @@
 import { useState } from "react";
 import { createLogItem, isGasConfigured } from "../api/logApi.js";
-
-const TAGS = [
-  "実装",
-  "設計",
-  "バグ",
-  "調査",
-  "公開",
-  "環境構築",
-  "仕様",
-  "リファクタ",
-  "達成",
-  "停滞",
-  "疲労",
-  "集中",
-  "迷い",
-  "気づき",
-  "日常",
-  "体調",
-  "筋トレ",
-  "読書",
-  "振り返り",
-];
+import { GENRE_OPTIONS, createEmptyLog, getGenre } from "../logSchema.js";
 
 const STATUS_OPTIONS = ["", "完了", "中断", "継続"];
 
-function createEmptyForm() {
-  return {
-    date: getTodayString(),
-    title: "",
-    tag: [],
-    mood: "",
-    duration: "",
-    status: "",
-    content: "",
-  };
-}
-
-function getTodayString() {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 export default function InputPage() {
+  const [genreKey, setGenreKey] = useState("dev");
   const [mode, setMode] = useState("form");
-  const [form, setForm] = useState(createEmptyForm);
+  const [form, setForm] = useState(() => createEmptyLog("dev"));
   const [pasteText, setPasteText] = useState("");
   const [isConfirming, setIsConfirming] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const genre = getGenre(genreKey);
+
+  function handleGenreChange(nextGenreKey) {
+    setGenreKey(nextGenreKey);
+    setForm(createEmptyLog(nextGenreKey));
+    setPasteText("");
+    setError("");
+    setStatusMessage("");
+    setIsConfirming(false);
+  }
 
   function updateField(name, value) {
     setForm((current) => ({
@@ -85,7 +56,7 @@ export default function InputPage() {
     setError("");
     setStatusMessage("");
 
-    const parsed = parsePastedLog(pasteText);
+    const parsed = parsePastedLog(pasteText, genreKey);
 
     if (!parsed) {
       setError("フォーマット通りに入力してください。フォーム入力に誘導します。");
@@ -104,7 +75,7 @@ export default function InputPage() {
     setError("");
     setStatusMessage("");
 
-    const validationError = validateForm(form);
+    const validationError = validateForm(form, genreKey);
 
     if (validationError) {
       setError(validationError);
@@ -119,7 +90,7 @@ export default function InputPage() {
     setError("");
     setStatusMessage("");
 
-    const validationError = validateForm(form);
+    const validationError = validateForm(form, genreKey);
 
     if (validationError) {
       setError(validationError);
@@ -135,10 +106,10 @@ export default function InputPage() {
     try {
       setIsSubmitting(true);
       await createLogItem({
-        ...form,
-        tag: form.tag.join(","),
+        genreKey,
+        data: form,
       });
-      setForm(createEmptyForm());
+      setForm(createEmptyLog(genreKey));
       setPasteText("");
       setIsConfirming(false);
       setStatusMessage("記録しました。");
@@ -153,8 +124,19 @@ export default function InputPage() {
     <section className="pageSection" aria-labelledby="input-title">
       <div className="sectionHeader">
         <h2 id="input-title">入力画面</h2>
-        <p>フォーム入力または貼り付け入力で記録します。</p>
+        <p>ジャンルを選び、フォーム入力または貼り付け入力で記録します。</p>
       </div>
+
+      <label className="field compact">
+        <span>ジャンル</span>
+        <select value={genreKey} onChange={(event) => handleGenreChange(event.target.value)}>
+          {GENRE_OPTIONS.map((item) => (
+            <option key={item.key} value={item.key}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <div className="modeTabs" aria-label="入力モード">
         <button
@@ -180,7 +162,7 @@ export default function InputPage() {
             <textarea
               value={pasteText}
               onChange={(event) => setPasteText(event.target.value)}
-              placeholder="- date: YYYY-MM-DD&#10;- title: 一言タイトル&#10;- tag: 実装,達成&#10;- mood: 集中&#10;- duration: 30&#10;- status: 完了&#10;- content: |&#10;    内容"
+              placeholder={getPastePlaceholder(genreKey)}
               rows="12"
             />
           </label>
@@ -196,7 +178,13 @@ export default function InputPage() {
 
       {mode === "form" && !isConfirming ? (
         <form className="logForm" onSubmit={handleConfirm}>
-          <LogFields form={form} onFieldChange={updateField} onTagToggle={toggleTag} />
+          <LogFields
+            form={form}
+            genre={genre}
+            genreKey={genreKey}
+            onFieldChange={updateField}
+            onTagToggle={toggleTag}
+          />
 
           {error ? <p className="message error">{error}</p> : null}
           {statusMessage ? <p className="message success">{statusMessage}</p> : null}
@@ -209,7 +197,7 @@ export default function InputPage() {
 
       {mode === "form" && isConfirming ? (
         <div className="logForm">
-          <Confirmation form={form} />
+          <Confirmation form={form} genreKey={genreKey} />
 
           {error ? <p className="message error">{error}</p> : null}
           {statusMessage ? <p className="message success">{statusMessage}</p> : null}
@@ -228,7 +216,7 @@ export default function InputPage() {
   );
 }
 
-function LogFields({ form, onFieldChange, onTagToggle }) {
+function LogFields({ form, genre, genreKey, onFieldChange, onTagToggle }) {
   return (
     <>
       <label className="field">
@@ -250,21 +238,23 @@ function LogFields({ form, onFieldChange, onTagToggle }) {
         />
       </label>
 
-      <fieldset className="tagField">
-        <legend>tag</legend>
-        <div className="tagGrid">
-          {TAGS.map((tag) => (
-            <label key={tag} className="tagOption">
-              <input
-                type="checkbox"
-                checked={form.tag.includes(tag)}
-                onChange={() => onTagToggle(tag)}
-              />
-              <span>{tag}</span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      {genre.tags.length > 0 ? (
+        <fieldset className="tagField">
+          <legend>tag</legend>
+          <div className="tagGrid">
+            {genre.tags.map((tag) => (
+              <label key={tag} className="tagOption">
+                <input
+                  type="checkbox"
+                  checked={form.tag.includes(tag)}
+                  onChange={() => onTagToggle(tag)}
+                />
+                <span>{tag}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
 
       <label className="field">
         <span>mood</span>
@@ -276,27 +266,85 @@ function LogFields({ form, onFieldChange, onTagToggle }) {
         />
       </label>
 
-      <label className="field">
-        <span>duration</span>
-        <input
-          type="number"
-          min="0"
-          value={form.duration}
-          onChange={(event) => onFieldChange("duration", event.target.value)}
-          placeholder="分"
-        />
-      </label>
+      {genreKey === "dev" ? (
+        <>
+          <label className="field">
+            <span>duration</span>
+            <input
+              type="number"
+              min="0"
+              value={form.duration}
+              onChange={(event) => onFieldChange("duration", event.target.value)}
+              placeholder="分"
+            />
+          </label>
 
-      <label className="field">
-        <span>status</span>
-        <select value={form.status} onChange={(event) => onFieldChange("status", event.target.value)}>
-          {STATUS_OPTIONS.map((status) => (
-            <option key={status || "empty"} value={status}>
-              {status || "未選択"}
-            </option>
-          ))}
-        </select>
-      </label>
+          <label className="field">
+            <span>status</span>
+            <select value={form.status} onChange={(event) => onFieldChange("status", event.target.value)}>
+              {STATUS_OPTIONS.map((status) => (
+                <option key={status || "empty"} value={status}>
+                  {status || "未選択"}
+                </option>
+              ))}
+            </select>
+          </label>
+        </>
+      ) : null}
+
+      {genreKey === "fitness" ? (
+        <>
+          <label className="field">
+            <span>部位</span>
+            <input
+              type="text"
+              value={form.part}
+              onChange={(event) => onFieldChange("part", event.target.value)}
+              placeholder="胸、背中、脚など"
+            />
+          </label>
+          <label className="field">
+            <span>重量</span>
+            <input
+              type="number"
+              min="0"
+              value={form.weight}
+              onChange={(event) => onFieldChange("weight", event.target.value)}
+              placeholder="kg"
+            />
+          </label>
+          <label className="field">
+            <span>回数</span>
+            <input
+              type="number"
+              min="0"
+              value={form.reps}
+              onChange={(event) => onFieldChange("reps", event.target.value)}
+              placeholder="回"
+            />
+          </label>
+          <label className="field">
+            <span>セット</span>
+            <input
+              type="number"
+              min="0"
+              value={form.sets}
+              onChange={(event) => onFieldChange("sets", event.target.value)}
+              placeholder="セット"
+            />
+          </label>
+          <label className="field">
+            <span>時間</span>
+            <input
+              type="number"
+              min="0"
+              value={form.time}
+              onChange={(event) => onFieldChange("time", event.target.value)}
+              placeholder="分"
+            />
+          </label>
+        </>
+      ) : null}
 
       <label className="field">
         <span>content</span>
@@ -311,75 +359,133 @@ function LogFields({ form, onFieldChange, onTagToggle }) {
   );
 }
 
-function Confirmation({ form }) {
+function Confirmation({ form, genreKey }) {
+  const rows = getConfirmationRows(form, genreKey);
+
   return (
     <div className="confirmBox">
       <h3>確認</h3>
       <dl>
-        <div>
-          <dt>date</dt>
-          <dd>{form.date}</dd>
-        </div>
-        <div>
-          <dt>title</dt>
-          <dd>{form.title}</dd>
-        </div>
-        <div>
-          <dt>tag</dt>
-          <dd>{form.tag.join(",")}</dd>
-        </div>
-        <div>
-          <dt>mood</dt>
-          <dd>{form.mood || "未入力"}</dd>
-        </div>
-        <div>
-          <dt>duration</dt>
-          <dd>{form.duration || "未入力"}</dd>
-        </div>
-        <div>
-          <dt>status</dt>
-          <dd>{form.status || "未選択"}</dd>
-        </div>
-        <div>
-          <dt>content</dt>
-          <dd className="preWrap">{form.content}</dd>
-        </div>
+        {rows.map(([label, value]) => (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd className={label === "content" ? "preWrap" : ""}>{value || "未入力"}</dd>
+          </div>
+        ))}
       </dl>
     </div>
   );
 }
 
-function parsePastedLog(value) {
-  const normalized = value.replace(/\r\n/g, "\n");
-  const match = normalized.match(
-    /^- date: (.+)\n- title: (.+)\n- tag: (.+)\n- mood: ?(.*)\n- duration: ?(.*)\n- status: ?(.*)\n- content: \|\n([\s\S]+)$/
-  );
+function getConfirmationRows(form, genreKey) {
+  const baseRows = [
+    ["date", form.date],
+    ["title", form.title],
+  ];
 
-  if (!match) {
+  if (genreKey !== "diary") {
+    baseRows.push(["tag", form.tag.join(",")]);
+  }
+
+  baseRows.push(["mood", form.mood]);
+
+  if (genreKey === "dev") {
+    baseRows.push(["duration", form.duration], ["status", form.status]);
+  }
+
+  if (genreKey === "fitness") {
+    baseRows.push(
+      ["部位", form.part],
+      ["重量", form.weight],
+      ["回数", form.reps],
+      ["セット", form.sets],
+      ["時間", form.time]
+    );
+  }
+
+  baseRows.push(["content", form.content]);
+  return baseRows;
+}
+
+function parsePastedLog(value, genreKey) {
+  const normalized = value.replace(/\r\n/g, "\n");
+  const fields = parseFields(normalized);
+
+  if (!fields.content) {
     return null;
   }
 
-  const [, date, title, tag, mood, duration, status, content] = match;
+  const nextForm = createEmptyLog(genreKey);
 
-  return {
-    date: date.trim(),
-    title: title.trim(),
-    tag: tag
+  if (!fields.date || !fields.title) {
+    return null;
+  }
+
+  nextForm.date = fields.date;
+  nextForm.title = fields.title;
+  nextForm.mood = fields.mood || "";
+  nextForm.content = fields.content;
+
+  if (genreKey !== "diary") {
+    if (!fields.tag) {
+      return null;
+    }
+
+    nextForm.tag = fields.tag
       .split(",")
       .map((item) => item.trim())
-      .filter(Boolean),
-    mood: mood.trim(),
-    duration: duration.trim(),
-    status: status.trim(),
-    content: content
-      .split("\n")
-      .map((line) => line.replace(/^ {4}/, ""))
-      .join("\n")
-      .trim(),
-  };
+      .filter(Boolean);
+  }
+
+  if (genreKey === "dev") {
+    nextForm.duration = fields.duration || "";
+    nextForm.status = fields.status || "";
+  }
+
+  if (genreKey === "fitness") {
+    nextForm.part = fields["部位"] || "";
+    nextForm.weight = fields["重量"] || "";
+    nextForm.reps = fields["回数"] || "";
+    nextForm.sets = fields["セット"] || "";
+    nextForm.time = fields["時間"] || "";
+  }
+
+  return nextForm;
 }
 
-function validateForm(form) {
+function parseFields(value) {
+  const lines = value.split("\n");
+  const fields = {};
+  let contentLines = null;
+
+  lines.forEach((line) => {
+    if (contentLines) {
+      contentLines.push(line.replace(/^ {4}/, ""));
+      return;
+    }
+
+    const contentMatch = line.match(/^- content: \|$/);
+
+    if (contentMatch) {
+      contentLines = [];
+      return;
+    }
+
+    const match = line.match(/^- ([^:]+): ?(.*)$/);
+
+    if (match) {
+      fields[match[1]] = match[2].trim();
+    }
+  });
+
+  if (contentLines) {
+    fields.content = contentLines.join("\n").trim();
+  }
+
+  return fields;
+}
+
+function validateForm(form, genreKey) {
   if (!form.date) {
     return "dateを入力してください。";
   }
@@ -388,7 +494,7 @@ function validateForm(form) {
     return "titleを入力してください。";
   }
 
-  if (form.tag.length === 0) {
+  if (genreKey !== "diary" && form.tag.length === 0) {
     return "tagを1つ以上選択してください。";
   }
 
@@ -397,4 +503,16 @@ function validateForm(form) {
   }
 
   return "";
+}
+
+function getPastePlaceholder(genreKey) {
+  if (genreKey === "fitness") {
+    return "- date: YYYY-MM-DD\n- title: ベンチプレス\n- tag: 胸\n- mood: 集中\n- 部位: 胸\n- 重量: 60\n- 回数: 10\n- セット: 3\n- 時間: \n- content: |\n    内容";
+  }
+
+  if (genreKey === "diary") {
+    return "- date: YYYY-MM-DD\n- title: 一言タイトル\n- mood: 穏やか\n- content: |\n    内容";
+  }
+
+  return "- date: YYYY-MM-DD\n- title: 一言タイトル\n- tag: 実装,達成\n- mood: 集中\n- duration: 30\n- status: 完了\n- content: |\n    内容";
 }

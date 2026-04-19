@@ -1,22 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
-import { CATEGORIES } from "../App.jsx";
+import { useEffect, useState } from "react";
 import { fetchLogItems, isGasConfigured } from "../api/logApi.js";
+import { GENRE_OPTIONS } from "../logSchema.js";
 
 export default function ListPage() {
+  const [genreKey, setGenreKey] = useState("dev");
   const [items, setItems] = useState([]);
-  const [filter, setFilter] = useState("すべて");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const filteredItems = useMemo(() => {
-    if (filter === "すべて") {
-      return items;
-    }
-
-    return items.filter((item) => item.category === filter);
-  }, [filter, items]);
-
-  async function loadItems() {
+  async function loadItems(nextGenreKey = genreKey) {
     setError("");
 
     if (!isGasConfigured()) {
@@ -26,13 +18,18 @@ export default function ListPage() {
 
     try {
       setIsLoading(true);
-      const nextItems = await fetchLogItems();
+      const nextItems = await fetchLogItems(nextGenreKey);
       setItems(nextItems);
     } catch (loadError) {
       setError(loadError.message);
     } finally {
       setIsLoading(false);
     }
+  }
+
+  function handleGenreChange(nextGenreKey) {
+    setGenreKey(nextGenreKey);
+    loadItems(nextGenreKey);
   }
 
   useEffect(() => {
@@ -44,20 +41,19 @@ export default function ListPage() {
       <div className="sectionHeader withAction">
         <div>
           <h2 id="list-title">一覧画面</h2>
-          <p>記録を新しい順に確認します。</p>
+          <p>ジャンルごとの記録を新しい順に確認します。</p>
         </div>
-        <button className="secondaryButton" type="button" onClick={loadItems} disabled={isLoading}>
+        <button className="secondaryButton" type="button" onClick={() => loadItems()} disabled={isLoading}>
           {isLoading ? "取得中" : "再読み込み"}
         </button>
       </div>
 
       <label className="field compact">
-        <span>フィルター</span>
-        <select value={filter} onChange={(event) => setFilter(event.target.value)}>
-          <option value="すべて">すべて</option>
-          {CATEGORIES.map((item) => (
-            <option key={item} value={item}>
-              {item}
+        <span>ジャンル</span>
+        <select value={genreKey} onChange={(event) => handleGenreChange(event.target.value)}>
+          {GENRE_OPTIONS.map((item) => (
+            <option key={item.key} value={item.key}>
+              {item.label}
             </option>
           ))}
         </select>
@@ -65,12 +61,12 @@ export default function ListPage() {
 
       {error ? <p className="message error">{error}</p> : null}
 
-      {!error && filteredItems.length === 0 ? (
+      {!error && items.length === 0 ? (
         <p className="emptyState">表示できる記録はありません。</p>
       ) : null}
 
       <div className="logList">
-        {filteredItems.map((item) => (
+        {items.map((item) => (
           <article className="logItem" key={item.id}>
             <div className="logMeta">
               <span>{item.category}</span>
