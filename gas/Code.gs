@@ -1,109 +1,118 @@
-const HEADERS = ["timestamp", "date", "title", "tag", "mood", "duration", "status", "content"];
-
 function doGet(e) {
-  const action = e && e.parameter && e.parameter.action ? e.parameter.action : "get";
+  const parameter = e && e.parameter ? e.parameter : {};
+  const action = parameter.action || "get";
 
   if (action === "post") {
-    return writeItem(e.parameter);
+    return postRow(parameter);
   }
 
-  return getItems();
+  if (action === "get") {
+    return getRows(parameter);
+  }
+
+  return jsonResponse({
+    ok: false,
+    error: "unknown action.",
+  });
 }
 
-function writeItem(parameter) {
-  const date = String(parameter.date || "").trim();
-  const title = String(parameter.title || "").trim();
-  const tag = String(parameter.tag || "").trim();
-  const mood = String(parameter.mood || "").trim();
-  const duration = String(parameter.duration || "").trim();
-  const status = String(parameter.status || "").trim();
-  const content = String(parameter.content || "").trim();
+function postRow(parameter) {
+  const sheetName = String(parameter.sheet || "").trim();
 
-  if (!date || !title || !tag || !content) {
+  if (!sheetName) {
     return jsonResponse({
       ok: false,
-      error: "date, title, tag, and content are required.",
+      error: "sheet is required.",
     });
   }
 
+  const sheet = getOrCreateSheet(sheetName);
+
+  if (parameter.headers && sheet.getLastRow() === 0) {
+    sheet.appendRow(splitCsv(parameter.headers));
+  }
+
+  const values = parameter.values ? splitCsv(parameter.values) : [];
   const timestamp = new Date().toISOString();
-  const sheet = getYearSheet(new Date(timestamp).getFullYear());
-  sheet.appendRow([timestamp, date, title, tag, mood, duration, status, content]);
+  sheet.appendRow([timestamp].concat(values));
 
   return jsonResponse({
     ok: true,
   });
 }
 
-function getItems() {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  const sheets = spreadsheet.getSheets();
-  const items = [];
+function getRows(parameter) {
+  const sheetName = String(parameter.sheet || new Date().getFullYear()).trim();
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
 
-  sheets.forEach(function (sheet) {
-    if (!/^\d{4}$/.test(sheet.getName())) {
-      return;
-    }
+  if (!sheet || sheet.getLastRow() === 0) {
+    return jsonResponse({
+      ok: true,
+      sheet: sheetName,
+      headers: [],
+      rows: [],
+    });
+  }
 
-    const values = sheet.getDataRange().getValues();
-
-    for (let i = 1; i < values.length; i += 1) {
-      const row = values[i];
-      const timestamp = row[0];
-
-      if (!timestamp) {
-        continue;
-      }
-
-      items.push({
-        id: String(timestamp) + "-" + i,
-        category: String(row[3] || ""),
-        text: String(row[7] || ""),
-        createdAt: timestamp instanceof Date ? timestamp.toISOString() : String(timestamp),
-        date: row[1],
-        title: row[2],
-        tag: row[3],
-        mood: row[4],
-        duration: row[5],
-        status: row[6],
-        content: row[7],
-      });
-    }
-  });
-
-  items.sort(function (a, b) {
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0] || [];
+  const rows = values.slice(1).map(function (row) {
+    return row.map(function (cell) {
+      return cell instanceof Date ? cell.toISOString() : cell;
+    });
   });
 
   return jsonResponse({
     ok: true,
-    items,
+    sheet: sheetName,
+    headers,
+    rows,
   });
 }
 
-function getYearSheet(year) {
+function getOrCreateSheet(sheetName) {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  const sheetName = String(year);
   let sheet = spreadsheet.getSheetByName(sheetName);
 
   if (!sheet) {
     sheet = spreadsheet.insertSheet(sheetName);
   }
 
-  ensureHeader(sheet);
   return sheet;
 }
 
-function ensureHeader(sheet) {
-  const range = sheet.getRange(1, 1, 1, HEADERS.length);
-  const values = range.getValues()[0];
-  const needsHeader = HEADERS.some(function (header, index) {
-    return values[index] !== header;
-  });
+function splitCsv(value) {
+  const text = String(value || "");
+  const result = [];
+  let current = "";
+  let inQuotes = false;
 
-  if (needsHeader) {
-    range.setValues([HEADERS]);
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text.charAt(i);
+    const nextChar = text.charAt(i + 1);
+
+    if (char === '"' && inQuotes && nextChar === '"') {
+      current += '"';
+      i += 1;
+      continue;
+    }
+
+    if (char === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      result.push(current);
+      current = "";
+      continue;
+    }
+
+    current += char;
   }
+
+  result.push(current);
+  return result;
 }
 
 function jsonResponse(payload) {

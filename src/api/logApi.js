@@ -1,5 +1,7 @@
 import { gasUrl } from "../config.js";
 
+const HEADERS = ["timestamp", "date", "title", "tag", "mood", "duration", "status", "content"];
+
 export function isGasConfigured() {
   return Boolean(gasUrl);
 }
@@ -9,15 +11,12 @@ export async function createLogItem({ date, title, tag, mood, duration, status, 
     throw new Error("VITE_GAS_URLが未設定です。");
   }
 
+  const values = [date, title, tag, mood, duration, status, content].map(toCsvValue).join(",");
   const url = buildGasUrl({
     action: "post",
-    date,
-    title,
-    tag,
-    mood,
-    duration,
-    status,
-    content,
+    sheet: getCurrentYearSheet(),
+    headers: HEADERS.join(","),
+    values,
   });
   logGasUrlDebug(url);
 
@@ -34,7 +33,7 @@ export async function fetchLogItems() {
     throw new Error("VITE_GAS_URLが未設定です。");
   }
 
-  const url = buildGasUrl({ action: "get" });
+  const url = buildGasUrl({ action: "get", sheet: getCurrentYearSheet() });
   logGasUrlDebug(url);
 
   const response = await fetch(url);
@@ -44,7 +43,36 @@ export async function fetchLogItems() {
   }
 
   const data = await response.json();
-  return Array.isArray(data.items) ? data.items : [];
+
+  if (Array.isArray(data.items)) {
+    return data.items;
+  }
+
+  return mapRowsToItems(data.headers, data.rows);
+}
+
+function getCurrentYearSheet() {
+  return String(new Date().getFullYear());
+}
+
+function mapRowsToItems(headers, rows) {
+  if (!Array.isArray(headers) || !Array.isArray(rows)) {
+    return [];
+  }
+
+  return rows
+    .map((row, index) => {
+      const record = Object.fromEntries(headers.map((header, headerIndex) => [header, row[headerIndex]]));
+      const createdAt = record.timestamp || record.date || "";
+
+      return {
+        id: `${createdAt}-${index}`,
+        category: record.tag || "",
+        text: record.content || "",
+        createdAt,
+      };
+    })
+    .filter((item) => item.createdAt || item.text);
 }
 
 function buildGasUrl(params) {
@@ -54,6 +82,16 @@ function buildGasUrl(params) {
   const separator = gasUrl.includes("?") ? "&" : "?";
 
   return `${gasUrl}${separator}${query}`;
+}
+
+function toCsvValue(value) {
+  const text = String(value ?? "");
+
+  if (!/[",\n]/.test(text)) {
+    return text;
+  }
+
+  return `"${text.replace(/"/g, '""')}"`;
 }
 
 function logGasUrlDebug(url) {
